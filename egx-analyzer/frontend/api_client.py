@@ -3,7 +3,8 @@
 
 import requests
 
-API_BASE = "http://127.0.0.1:8000"
+# تم التعديل للرابط السحابي الجديد
+API_BASE = "https://egx-analyzer.onrender.com"
 
 
 def api_get(path: str, params: dict = None):
@@ -15,7 +16,7 @@ def api_get(path: str, params: dict = None):
         resp.raise_for_status()
         return resp.json(), None
     except requests.exceptions.ConnectionError:
-        return None, "تعذر الاتصال بالـ API. تأكد إنه شغال على http://127.0.0.1:8000 (uvicorn app.api.main:app --reload)"
+        return None, f"تعذر الاتصال بالـ API. تأكد إنه شغال على {API_BASE}"
     except requests.exceptions.Timeout:
         return None, "استغرق الطلب وقتًا طويلًا جدًا (timeout). جرب تقليل عدد الأسهم أو المحاولة مرة أخرى."
     except requests.exceptions.HTTPError as e:
@@ -39,7 +40,7 @@ def api_post(path: str, json_body: dict = None):
         resp.raise_for_status()
         return resp.json(), None
     except requests.exceptions.ConnectionError:
-        return None, "تعذر الاتصال بالـ API. تأكد إنه شغال على http://127.0.0.1:8000 (uvicorn app.api.main:app --reload)"
+        return None, f"تعذر الاتصال بالـ API. تأكد إنه شغال على {API_BASE}"
     except requests.exceptions.Timeout:
         return None, "استغرق الطلب وقتًا طويلًا جدًا (timeout)."
     except requests.exceptions.HTTPError as e:
