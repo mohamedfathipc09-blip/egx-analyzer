@@ -2,8 +2,7 @@
 import logging
 import pandas as pd
 import yfinance as yf
-# هنستدعي السلاح السري بتاعنا اللي بيقلد المتصفحات الحقيقية
-from curl_cffi import requests
+import requests
 
 from app.config import YAHOO_SUFFIX, DEFAULT_HISTORY_PERIOD
 from app.data.retry_utils import retry_with_backoff
@@ -11,8 +10,21 @@ from app.data.retry_utils import retry_with_backoff
 log = logging.getLogger("history_client")
 _CACHE = {}
 
-# السحر هنا: بنجبر الجلسة تظهر كأنها متصفح كروم إصدار 110
-_SESSION = requests.Session(impersonate="chrome110")
+# تجهيز جلسة بـ Headers كاملة لمتصفح حقيقي لتخطي الحظر بدون مكتبات معقدة
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Cache-Control': 'max-age=0'
+})
 
 class HistoryNotFoundError(Exception):
     pass
@@ -23,7 +35,6 @@ def to_yahoo_symbol(symbol: str) -> str:
 
 @retry_with_backoff(max_attempts=3, base_delay=1.5, exceptions=(Exception,))
 def _fetch_yahoo_history(ysym: str, period: str, interval: str):
-    # بنباصي الجلسة المتنكرة دي لمكتبة ياهو عشان تتخطى الحظر
     ticker = yf.Ticker(ysym, session=_SESSION)
     return ticker.history(period=period, interval=interval)
 
