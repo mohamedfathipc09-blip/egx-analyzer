@@ -1,23 +1,34 @@
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 
-# استدعاء الملفات بتاعتنا
 from app.data.history_client import fetch_history
 from app.data.validation import validate_ohlcv
 from app.analysis.strategy_engine import QuantStrategyEngine
 
-# السطر اللي كان ناقص واللي بسببه السيرفر وقع!
 router = APIRouter(prefix="/recommendations", tags=["التوصيات"])
 
 @router.get("/quant-analysis/{symbol}", summary="تحليل كمّي احترافي للسهم (للمضاربة)")
 def get_quant_analysis(symbol: str) -> Dict[str, Any]:
     try:
-        # Phase 2: جلب اليومي والأسبوعي (Multi-Timeframe)
+        # 1. جلب البيانات اليومية (مرة واحدة فقط لتخطي حظر ياهو)
         df_daily = fetch_history(symbol, period="2y", interval="1d")
-        df_weekly = fetch_history(symbol, period="2y", interval="1wk")
+        
+        # 2. بناء الفريم الأسبوعي داخلياً في السيرفر (Resampling)
+        # الطريقة دي بتمنع البلوك تماماً وبتكون أسرع وأدق
+        logic = {
+            'Open': 'first',
+            'High': 'max',
+            'Low': 'min',
+            'Close': 'last',
+            'Volume': 'sum'
+        }
+        df_weekly = df_daily.resample('W').agg(logic).dropna()
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"فشل جلب بيانات السهم: {str(e)}")
 
+    # 3. فحص جودة البيانات
     is_valid, msg = validate_ohlcv(df_daily)
     if not is_valid:
         return {
@@ -28,6 +39,7 @@ def get_quant_analysis(symbol: str) -> Dict[str, Any]:
             "error_msg": f"DATA QUALITY WARNING: {msg}"
         }
 
+    # 4. تشغيل محرك الاستراتيجية
     try:
         engine = QuantStrategyEngine(df_daily=df_daily, df_weekly=df_weekly)
         analysis = engine.calculate_trade_setup()
