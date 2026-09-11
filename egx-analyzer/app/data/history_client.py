@@ -8,7 +8,7 @@ Yahoo Finance يتتبع أسهم البورصة المصرية برمز الس�
 """
 
 import logging
-
+import requests
 import pandas as pd
 import yfinance as yf
 
@@ -19,6 +19,11 @@ log = logging.getLogger("history_client")
 
 _CACHE = {}  # cache بسيط في الذاكرة: {(symbol, period, interval): DataFrame}
 
+# إعداد متصفح وهمي لتخطي حماية ياهو على السيرفرات السحابية
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+})
 
 class HistoryNotFoundError(Exception):
     """يُرفع عندما لا توجد بيانات تاريخية لرمز السهم المطلوب."""
@@ -37,7 +42,8 @@ def _fetch_yahoo_history(ysym: str, period: str, interval: str):
     على أي Exception هنا تحديدًا (على عكس باقي المصادر اللي بنحدد نوع
     الخطأ بدقة) - القرار ده مقصود ومش إهمال.
     """
-    return yf.Ticker(ysym).history(period=period, interval=interval)
+    # تمرير المتصفح الوهمي (Session) لـ Ticker
+    return yf.Ticker(ysym, session=_SESSION).history(period=period, interval=interval)
 
 
 def fetch_history(
